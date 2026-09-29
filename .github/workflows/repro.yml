@@ -1,0 +1,97 @@
+name: OIDC + project-scope repro (case 412003 follow-up)
+
+# JF_GIT_PROJECT / JF_PROJECT is intentionally left unset in every mode
+# below - the whole point is to test what happens with no project
+# configured on the frogbot/CLI side.
+#
+#   - oidc_project_scoped: token comes from a JFrog OIDC provider
+#     (jm-public-repro) whose only matching identity mapping for this repo
+#     is scoped to a JFrog project ("jmoidc").
+#   - access_token: a plain platform access token, not derived through any
+#     OIDC identity mapping at all.
+
+on:
+  workflow_dispatch:
+    inputs:
+      frogbot_version:
+        description: 'v2 | v3'
+        required: true
+        default: 'v3'
+      auth_mode:
+        description: 'oidc_project_scoped | access_token'
+        required: true
+        default: 'oidc_project_scoped'
+      pr_number:
+        description: 'PR number to scan'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Exchange GitHub OIDC token for JFrog access token
+        if: ${{ inputs.auth_mode == 'oidc_project_scoped' }}
+        id: oidc
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+        run: |
+          set -euo pipefail
+          ID_TOKEN=$(curl -sS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=jfrog-github-public-repro" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['value'])")
+
+          RESP=$(curl -sS -X POST "${JF_URL%/}/access/api/v1/oidc/token" \
+            -H "Content-Type: application/json" \
+            -d "{\"grant_type\":\"urn:ietf:params:oauth:grant-type:token-exchange\",\"subject_token_type\":\"urn:ietf:params:oauth:token-type:id_token\",\"subject_token\":\"$ID_TOKEN\",\"provider_name\":\"jm-public-repro\"}")
+
+          ACCESS_TOKEN=$(python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('access_token',''))" <<< "$RESP")
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "Token exchange failed:"
+            echo "$RESP"
+            exit 1
+          fi
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+
+          echo "Exchange succeeded. Response metadata (token redacted):"
+          python3 -c "import sys,json;d=json.load(sys.stdin);d.pop('access_token',None);print(json.dumps(d,indent=2))" <<< "$RESP"
+
+      - name: Probe the actual watches/JAS endpoint directly
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          TOKEN: ${{ inputs.auth_mode == 'access_token' && secrets.JF_ACCESS_TOKEN || steps.oidc.outputs.access_token }}
+        run: |
+          set -x
+          curl -sS -w "\nHTTP_STATUS:%{http_code}\n" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "${JF_URL%/}/xray/api/v1/xsc/watches/resource?git_repository=github.com/jfrogjmiller/frogbot-oidc-project-scope-repro.git"
+
+      - name: Run Frogbot ${{ inputs.frogbot_version }} scan-pull-request
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ inputs.auth_mode == 'access_token' && secrets.JF_ACCESS_TOKEN || steps.oidc.outputs.access_token }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JF_GIT_PROVIDER: github
+          JF_GIT_OWNER: jfrogjmiller
+          JF_GIT_REPO: frogbot-oidc-project-scope-repro
+          JF_GIT_PULL_REQUEST_ID: ${{ inputs.pr_number }}
+          JF_GIT_BASE_BRANCH: main
+          JFROG_CLI_LOG_LEVEL: DEBUG
+        run: |
+          if [ "${{ inputs.frogbot_version }}" = "v2" ]; then
+            curl -fLs https://releases.jfrog.io/artifactory/frogbot/v2/2.34.1/frogbot-linux-amd64/frogbot -o /usr/local/bin/frogbot
+          else
+            curl -fLs https://releases.jfrog.io/artifactory/frogbot/v3/3.2.1/frogbot-linux-amd64/frogbot -o /usr/local/bin/frogbot
+          fi
+          chmod +x /usr/local/bin/frogbot
+          frogbot --version
+          frogbot scan-pull-request

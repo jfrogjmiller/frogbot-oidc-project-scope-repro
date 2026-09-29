@@ -1,0 +1,10 @@
+{
+  "name": "frogbot-oidc-project-scope-repro",
+  "version": "1.0.0",
+  "description": "Repro repo for case 412003 follow-up: frogbot v2 vs v3, OIDC auth, JFrog project scope",
+  "private": true,
+  "license": "UNLICENSED",
+  "dependencies": {
+    "left-pad": "1.3.0"
+  }
+}
