@@ -24,6 +24,10 @@ on:
       pr_number:
         description: 'PR number to scan'
         required: true
+      project_key:
+        description: 'JF_GIT_PROJECT to set (leave empty for the no-project scenarios)'
+        required: false
+        default: ''
 
 permissions:
   id-token: write
@@ -86,6 +90,7 @@ jobs:
           JF_GIT_REPO: frogbot-oidc-project-scope-repro
           JF_GIT_PULL_REQUEST_ID: ${{ inputs.pr_number }}
           JF_GIT_BASE_BRANCH: main
+          JF_GIT_PROJECT: ${{ inputs.project_key }}
           JFROG_CLI_LOG_LEVEL: DEBUG
         run: |
           if [ "${{ inputs.frogbot_version }}" = "v2" ]; then
