@@ -1,0 +1,34 @@
+name: Frogbot V3 (official action) - PR scan
+
+# Case 412003 follow-up: using the real jfrog/frogbot@v3 GitHub Action
+# instead of manually curling the binary, to rule out whether the manual
+# invocation was skipping a setup/registration step that the official
+# action performs (e.g. via setFrogbotEnv / setupOidcTokenIfNeeded).
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  scan-pull-request:
+    runs-on: ubuntu-latest
+    environment: frogbot
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Run Frogbot (official action)
+        uses: jfrog/frogbot@v3
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JFROG_CLI_LOG_LEVEL: DEBUG
