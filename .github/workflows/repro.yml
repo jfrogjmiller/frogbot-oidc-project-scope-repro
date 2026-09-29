@@ -18,7 +18,7 @@ on:
         required: true
         default: 'v3'
       auth_mode:
-        description: 'oidc_project_scoped | access_token'
+        description: 'oidc_project_scoped | oidc_global_scoped | access_token'
         required: true
         default: 'oidc_project_scoped'
       pr_number:
@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Exchange GitHub OIDC token for JFrog access token
-        if: ${{ inputs.auth_mode == 'oidc_project_scoped' }}
+        if: ${{ inputs.auth_mode == 'oidc_project_scoped' || inputs.auth_mode == 'oidc_global_scoped' }}
         id: oidc
         env:
           JF_URL: ${{ secrets.JF_URL }}
