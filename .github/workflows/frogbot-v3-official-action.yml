@@ -25,10 +25,12 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Run Frogbot (official action)
+      - name: Run Frogbot (official action, native OIDC)
         uses: jfrog/frogbot@v3
+        with:
+          oidc-provider-name: jm-public-repro
+          oidc-audience: jfrog-github-public-repro
         env:
           JF_URL: ${{ secrets.JF_URL }}
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JFROG_CLI_LOG_LEVEL: DEBUG
