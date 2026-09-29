@@ -5,6 +5,7 @@
   "private": true,
   "license": "UNLICENSED",
   "dependencies": {
-    "left-pad": "1.3.0"
+    "left-pad": "1.3.0",
+    "lodash": "4.17.4"
   }
 }
