@@ -15,3 +15,4 @@ intentionally left unset in every scenario.
 
 Re-triggering a fresh, isolated scan session (case 412003 follow-up).
 Trigger official-action test run.
+Test: project-scoped OIDC mapping wins (priority 0).
