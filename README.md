@@ -12,3 +12,5 @@ v3?
 
 See `.github/workflows/` for the test matrix. `JF_GIT_PROJECT` is
 intentionally left unset in every scenario.
+
+Re-triggering a fresh, isolated scan session (case 412003 follow-up).
