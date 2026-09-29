@@ -18,12 +18,16 @@ on:
         required: true
         default: 'v3'
       auth_mode:
-        description: 'oidc_project_scoped | access_token'
+        description: 'oidc_project_scoped | oidc_global_scoped | access_token'
         required: true
         default: 'oidc_project_scoped'
       pr_number:
         description: 'PR number to scan'
         required: true
+      project_key:
+        description: 'JF_GIT_PROJECT to set (leave empty for the no-project scenarios)'
+        required: false
+        default: ''
 
 permissions:
   id-token: write
@@ -34,12 +38,13 @@ permissions:
 jobs:
   repro:
     runs-on: ubuntu-latest
+    environment: frogbot
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Exchange GitHub OIDC token for JFrog access token
-        if: ${{ inputs.auth_mode == 'oidc_project_scoped' }}
+        if: ${{ inputs.auth_mode == 'oidc_project_scoped' || inputs.auth_mode == 'oidc_global_scoped' }}
         id: oidc
         env:
           JF_URL: ${{ secrets.JF_URL }}
@@ -85,6 +90,7 @@ jobs:
           JF_GIT_REPO: frogbot-oidc-project-scope-repro
           JF_GIT_PULL_REQUEST_ID: ${{ inputs.pr_number }}
           JF_GIT_BASE_BRANCH: main
+          JF_GIT_PROJECT: ${{ inputs.project_key }}
           JFROG_CLI_LOG_LEVEL: DEBUG
         run: |
           if [ "${{ inputs.frogbot_version }}" = "v2" ]; then
