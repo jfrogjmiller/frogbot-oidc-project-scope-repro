@@ -34,6 +34,7 @@ permissions:
 jobs:
   repro:
     runs-on: ubuntu-latest
+    environment: frogbot
     steps:
       - name: Checkout
         uses: actions/checkout@v4
